@@ -1,5 +1,7 @@
 /* ============================================================
-   FC 4R 70 — Compositions — v2
+   FC 4R 70 — Compositions — v3
+   Interactions terrain : ajout direct sur un poste, déplacement
+   libre des joueurs (Pointer Events : souris ET tactile).
    ============================================================ */
 
 (function () {
@@ -59,20 +61,23 @@
 
   const STORAGE_SQUAD = "fc4r_squad_v2";
   const STORAGE_LINEUPS = "fc4r_lineups_v2";
+  const DRAG_THRESHOLD = 6;
 
   /* ---------- State ---------- */
   let squad = loadJSON(STORAGE_SQUAD, []);
   let savedLineups = loadJSON(STORAGE_LINEUPS, []);
   let currentFormation = "4-4-2";
-  let assignments = {};
+  let assignments = {};   // slotIndex -> playerId
+  let positions = {};     // slotIndex -> {x,y} (déplacement libre, remplace la position de formation)
   let selectedPlayerId = null;
-  let draggedPlayerId = null;
   let editingPlayerId = null;
+  let pendingSlotIndex = null; // ajout d'un joueur déclenché depuis un poste vide du terrain
 
   /* ---------- DOM refs ---------- */
   const formationSelect = document.getElementById("formationSelect");
   const pitchSlotsEl = document.getElementById("pitchSlots");
   const benchListEl = document.getElementById("benchList");
+  const benchPanelEl = document.querySelector(".bench-panel");
   const benchCountEl = document.getElementById("benchCount");
   const lineupTitleEl = document.getElementById("lineupTitle");
   const pitchBrandTitleEl = document.getElementById("pitchBrandTitle");
@@ -119,6 +124,14 @@
   function initials(name) {
     return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
   }
+  function pitchRelativeCoords(clientX, clientY) {
+    const rect = pitchEl.getBoundingClientRect();
+    let x = ((clientX - rect.left) / rect.width) * 100;
+    let y = ((clientY - rect.top) / rect.height) * 100;
+    x = Math.max(4, Math.min(96, x));
+    y = Math.max(4, Math.min(96, y));
+    return { x, y };
+  }
 
   function toast(msg) {
     let el = document.querySelector(".toast");
@@ -130,7 +143,7 @@
   }
 
   /* ============================================================
-     Player token (sober circular chip, not an illustrated jersey)
+     Player token (sober circular chip)
      ============================================================ */
   function buildToken(number, role) {
     const token = document.createElement("div");
@@ -183,6 +196,7 @@
 
   formationSelect.addEventListener("change", () => {
     remapAssignmentsToFormation(currentFormation, formationSelect.value);
+    positions = {};
     currentFormation = formationSelect.value;
     renderPitch(); renderBench();
   });
@@ -219,11 +233,13 @@
     slots.forEach((slot, idx) => {
       const playerId = assignments[idx];
       const player = playerId ? playerById(playerId) : null;
+      const coords = positions[idx] || slot;
 
       const el = document.createElement("div");
-      el.className = "slot";
-      el.style.left = slot.x + "%";
-      el.style.top = slot.y + "%";
+      el.className = "slot" + (player ? " slot--filled" : "");
+      el.style.left = coords.x + "%";
+      el.style.top = coords.y + "%";
+      el.dataset.slotIndex = idx;
 
       if (player) {
         el.appendChild(buildToken(player.number, player.position));
@@ -231,27 +247,21 @@
         nameEl.className = "slot__name";
         nameEl.textContent = player.name;
         el.appendChild(nameEl);
+        attachTokenDrag(el, idx);
       } else {
         const ph = document.createElement("div");
         ph.className = "slot__placeholder";
         ph.textContent = ROLE_LABEL[slot.role];
         el.appendChild(ph);
+        el.addEventListener("click", () => onSlotTap(idx));
       }
-
-      el.addEventListener("click", () => onSlotClick(idx));
-      el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("drag-over"); });
-      el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
-      el.addEventListener("drop", (e) => {
-        e.preventDefault(); el.classList.remove("drag-over");
-        const pid = e.dataTransfer.getData("text/player-id") || draggedPlayerId;
-        if (pid) placePlayerInSlot(pid, idx);
-      });
 
       pitchSlotsEl.appendChild(el);
     });
   }
 
-  function onSlotClick(idx) {
+  // Tap sur un poste (pas de glissement détecté)
+  function onSlotTap(idx) {
     const playerId = assignments[idx];
     if (selectedPlayerId) {
       placePlayerInSlot(selectedPlayerId, idx);
@@ -261,17 +271,68 @@
     }
     if (playerId) {
       delete assignments[idx];
+      delete positions[idx];
       renderPitch(); renderBench();
+    } else {
+      openPlayerModalForSlot(idx);
     }
   }
 
-  function placePlayerInSlot(playerId, slotIdx) {
+  function placePlayerInSlot(playerId, slotIdx, coords) {
     const player = playerById(playerId);
     if (!player) return;
-    const slotRole = FORMATIONS[currentFormation][slotIdx].role;
     Object.keys(assignments).forEach(k => { if (assignments[k] === playerId) delete assignments[k]; });
     assignments[slotIdx] = playerId;
+    if (coords) positions[slotIdx] = coords;
     renderPitch(); renderBench();
+  }
+
+  // Déplacement libre d'un joueur déjà placé (souris + tactile via Pointer Events)
+  function attachTokenDrag(el, idx) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== undefined && e.button > 0) return;
+      const startX = e.clientX, startY = e.clientY;
+      let moved = false;
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+          moved = true;
+          el.classList.add("is-dragging");
+        }
+        if (moved) {
+          ev.preventDefault();
+          const coords = pitchRelativeCoords(ev.clientX, ev.clientY);
+          el.style.left = coords.x + "%";
+          el.style.top = coords.y + "%";
+          const over = document.elementFromPoint(ev.clientX, ev.clientY);
+          const overBench = !!(over && over.closest(".bench-panel"));
+          benchPanelEl.classList.toggle("drag-over", overBench);
+        }
+      }
+
+      function onUp(ev) {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        el.classList.remove("is-dragging");
+        benchPanelEl.classList.remove("drag-over");
+
+        if (!moved) { onSlotTap(idx); return; }
+
+        const over = document.elementFromPoint(ev.clientX, ev.clientY);
+        if (over && over.closest(".bench-panel")) {
+          delete assignments[idx];
+          delete positions[idx];
+          renderPitch(); renderBench();
+          return;
+        }
+        positions[idx] = pitchRelativeCoords(ev.clientX, ev.clientY);
+        renderPitch();
+      }
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    });
   }
 
   /* ============================================================
@@ -298,7 +359,6 @@
   function buildPlayerChip(player) {
     const chip = document.createElement("div");
     chip.className = "player-chip" + (selectedPlayerId === player.id ? " selected" : "");
-    chip.draggable = true;
 
     const avatar = document.createElement("span");
     avatar.className = "chip-avatar role-" + player.position;
@@ -314,30 +374,80 @@
 
     chip.appendChild(avatar); chip.appendChild(name); chip.appendChild(pos);
 
+    chip.addEventListener("pointerdown", (e) => startChipDrag(e, chip, player));
     chip.addEventListener("click", () => {
+      if (chip._suppressClick) { chip._suppressClick = false; return; }
       selectedPlayerId = (selectedPlayerId === player.id) ? null : player.id;
       renderBench();
     });
-    chip.addEventListener("dragstart", (e) => {
-      draggedPlayerId = player.id;
-      e.dataTransfer.setData("text/player-id", player.id);
-      e.dataTransfer.effectAllowed = "move";
-    });
-    chip.addEventListener("dragend", () => { draggedPlayerId = null; });
 
     return chip;
   }
 
-  clearPitchBtn.addEventListener("click", () => { assignments = {}; renderPitch(); renderBench(); });
+  // Glisser un joueur du banc directement vers un poste du terrain
+  function startChipDrag(e, chipEl, player) {
+    if (e.button !== undefined && e.button > 0) return;
+    const startX = e.clientX, startY = e.clientY;
+    let moved = false;
+    let ghost = null;
+    let lastSlotEl = null;
 
-  benchListEl.addEventListener("dragover", (e) => e.preventDefault());
-  benchListEl.addEventListener("drop", (e) => {
-    e.preventDefault();
-    const pid = e.dataTransfer.getData("text/player-id") || draggedPlayerId;
-    if (pid) {
-      Object.keys(assignments).forEach(k => { if (assignments[k] === pid) delete assignments[k]; });
-      renderPitch(); renderBench();
+    function ensureGhost() {
+      if (ghost) return;
+      const rect = chipEl.getBoundingClientRect();
+      ghost = chipEl.cloneNode(true);
+      ghost.style.position = "fixed";
+      ghost.style.left = "0"; ghost.style.top = "0";
+      ghost.style.width = rect.width + "px";
+      ghost.style.pointerEvents = "none";
+      ghost.style.opacity = "0.92";
+      ghost.style.zIndex = "150";
+      ghost.style.boxShadow = "0 8px 20px -8px rgba(16,14,13,0.4)";
+      document.body.appendChild(ghost);
     }
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if (!moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+        moved = true;
+        chipEl._suppressClick = true;
+        ensureGhost();
+      }
+      if (moved) {
+        ev.preventDefault();
+        ghost.style.transform = "translate(" + (ev.clientX - ghost.offsetWidth / 2) + "px," + (ev.clientY - 18) + "px)";
+        const over = document.elementFromPoint(ev.clientX, ev.clientY);
+        const slotEl = over ? over.closest(".slot") : null;
+        if (slotEl !== lastSlotEl) {
+          if (lastSlotEl) lastSlotEl.classList.remove("drag-over");
+          if (slotEl) slotEl.classList.add("drag-over");
+          lastSlotEl = slotEl;
+        }
+      }
+    }
+
+    function onUp(ev) {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (lastSlotEl) lastSlotEl.classList.remove("drag-over");
+      if (ghost) ghost.remove();
+      if (!moved) return;
+
+      const over = document.elementFromPoint(ev.clientX, ev.clientY);
+      const slotEl = over ? over.closest(".slot") : null;
+      if (slotEl && slotEl.dataset.slotIndex !== undefined) {
+        const idx = Number(slotEl.dataset.slotIndex);
+        placePlayerInSlot(player.id, idx, pitchRelativeCoords(ev.clientX, ev.clientY));
+      }
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  clearPitchBtn.addEventListener("click", () => {
+    assignments = {}; positions = {};
+    renderPitch(); renderBench();
   });
 
   /* ============================================================
@@ -350,7 +460,7 @@
     if (squad.length === 0) {
       const empty = document.createElement("p");
       empty.className = "squad-empty";
-      empty.textContent = "Aucun joueur pour l'instant. Clique sur \u00ab + Ajouter un joueur \u00bb pour commencer.";
+      empty.textContent = "Aucun joueur pour l'instant. Clique sur « + Ajouter un joueur », ou directement sur un poste du terrain.";
       squadGroupsEl.appendChild(empty);
       return;
     }
@@ -389,7 +499,7 @@
     name.textContent = player.name;
     const meta = document.createElement("div");
     meta.className = "player-card__meta";
-    meta.textContent = "N\u00b0" + player.number + " \u00b7 " + ROLE_LABEL[player.position];
+    meta.textContent = "N°" + player.number + " · " + ROLE_LABEL[player.position];
     info.appendChild(name); info.appendChild(meta);
 
     card.appendChild(avatar); card.appendChild(info);
@@ -400,6 +510,7 @@
   addPlayerBtn.addEventListener("click", () => openPlayerModal(null));
 
   function openPlayerModal(playerId) {
+    pendingSlotIndex = null;
     editingPlayerId = playerId;
     const player = playerId ? playerById(playerId) : null;
     playerModalTitle.textContent = player ? "Modifier le joueur" : "Ajouter un joueur";
@@ -411,7 +522,27 @@
     playerModalBackdrop.classList.add("show");
     playerNameInput.focus();
   }
-  function closePlayerModal() { playerModalBackdrop.classList.remove("show"); editingPlayerId = null; }
+
+  // Ouverture depuis un poste vide du terrain : poste pré-rempli, ajout + placement en un geste
+  function openPlayerModalForSlot(slotIdx) {
+    pendingSlotIndex = slotIdx;
+    editingPlayerId = null;
+    const role = FORMATIONS[currentFormation][slotIdx] ? FORMATIONS[currentFormation][slotIdx].role : "DEF";
+    playerModalTitle.textContent = "Ajouter un joueur";
+    playerIdInput.value = "";
+    playerNumberInput.value = "";
+    playerNameInput.value = "";
+    playerPositionInput.value = role;
+    playerDeleteBtn.hidden = true;
+    playerModalBackdrop.classList.add("show");
+    playerNameInput.focus();
+  }
+
+  function closePlayerModal() {
+    playerModalBackdrop.classList.remove("show");
+    editingPlayerId = null;
+    pendingSlotIndex = null;
+  }
   playerModalClose.addEventListener("click", closePlayerModal);
   playerModalBackdrop.addEventListener("click", (e) => { if (e.target === playerModalBackdrop) closePlayerModal(); });
 
@@ -422,14 +553,19 @@
     const position = playerPositionInput.value;
     if (!name || !number) return;
 
+    const targetSlot = pendingSlotIndex;
+    let newPlayerId = null;
+
     if (editingPlayerId) {
       const player = playerById(editingPlayerId);
       if (player) { player.number = number; player.name = name; player.position = position; }
     } else {
-      squad.push({ id: uid(), number, name, position });
+      newPlayerId = uid();
+      squad.push({ id: newPlayerId, number, name, position });
     }
     persistSquad();
     closePlayerModal();
+    if (newPlayerId && targetSlot !== null) placePlayerInSlot(newPlayerId, targetSlot);
     renderSquadGroups(); renderBench(); renderPitch();
   });
 
@@ -464,11 +600,12 @@
       formation: currentFormation,
       title: lineupTitleEl.value.trim(),
       assignments: { ...assignments },
+      positions: { ...positions },
       savedAt: Date.now()
     });
     persistLineups();
     closeSaveModal();
-    toast("Composition enregistr\u00e9e");
+    toast("Composition enregistrée");
     renderSavedGrid();
   });
 
@@ -477,7 +614,7 @@
     if (savedLineups.length === 0) {
       const empty = document.createElement("p");
       empty.className = "saved-empty";
-      empty.textContent = "Aucune composition enregistr\u00e9e. Va sur \u00ab Terrain \u00bb, compose ton onze, puis clique sur \u00ab Enregistrer \u00bb.";
+      empty.textContent = "Aucune composition enregistrée. Va sur « Terrain », compose ton onze, puis clique sur « Enregistrer ».";
       savedGridEl.appendChild(empty);
       return;
     }
@@ -494,10 +631,11 @@
     Object.entries(lineup.assignments).forEach(([slotIdx, playerId]) => {
       const slot = slots[Number(slotIdx)];
       if (!slot) return;
+      const custom = lineup.positions && lineup.positions[slotIdx];
       const dot = document.createElement("span");
       dot.className = "mini-dot";
-      dot.style.left = slot.x + "%";
-      dot.style.top = slot.y + "%";
+      dot.style.left = (custom ? custom.x : slot.x) + "%";
+      dot.style.top = (custom ? custom.y : slot.y) + "%";
       preview.appendChild(dot);
     });
 
@@ -509,7 +647,7 @@
     const meta = document.createElement("div");
     meta.className = "saved-card__meta";
     const dateStr = lineup.savedAt ? new Date(lineup.savedAt).toLocaleDateString("fr-FR") : "";
-    meta.textContent = lineup.formation + (dateStr ? " \u00b7 " + dateStr : "");
+    meta.textContent = lineup.formation + (dateStr ? " · " + dateStr : "");
 
     const actions = document.createElement("div");
     actions.className = "saved-card__actions";
@@ -533,18 +671,22 @@
   function loadLineup(id) {
     const lineup = savedLineups.find(l => l.id === id);
     if (!lineup) return;
-    const validAssignments = {};
+    const validAssignments = {}; const validPositions = {};
     Object.entries(lineup.assignments).forEach(([slotIdx, playerId]) => {
-      if (playerById(playerId)) validAssignments[slotIdx] = playerId;
+      if (playerById(playerId)) {
+        validAssignments[slotIdx] = playerId;
+        if (lineup.positions && lineup.positions[slotIdx]) validPositions[slotIdx] = lineup.positions[slotIdx];
+      }
     });
     currentFormation = FORMATIONS[lineup.formation] ? lineup.formation : currentFormation;
     assignments = validAssignments;
+    positions = validPositions;
     lineupTitleEl.value = lineup.title || lineup.name;
     pitchBrandTitleEl.textContent = lineupTitleEl.value || "Titulaires";
     formationSelect.value = currentFormation;
     switchView("terrain");
     renderPitch(); renderBench();
-    toast("Composition charg\u00e9e");
+    toast("Composition chargée");
   }
 
   /* ============================================================
@@ -553,7 +695,7 @@
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
     const originalText = exportBtn.textContent;
-    exportBtn.textContent = "G\u00e9n\u00e9ration\u2026";
+    exportBtn.textContent = "Génération…";
     try {
       const canvas = await html2canvas(pitchEl, { backgroundColor: null, scale: 2 });
       const link = document.createElement("a");
