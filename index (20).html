@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#100E0D">
+<title>FC 4R 70 — Compositions</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <button id="navToggle" class="nav-toggle" type="button" aria-label="Ouvrir le menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <img src="logo.png" alt="Écusson du FC 4R 70" class="sidebar__crest">
+      <div class="sidebar__club">
+        <strong>FC 4R 70</strong>
+      </div>
+    </div>
+
+    <ul class="sidebar__nav">
+      <li>
+        <button class="nav-item active" data-view="accueil" type="button">
+          <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+          Accueil
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-view="terrain" type="button">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18M12 4v16M8 8h1M8 16h1M15 8h1M15 16h1"/></svg>
+          Terrain
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-view="effectif" type="button">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M14.8 20c0-2.6 1.6-4.6 4-5.2"/></svg>
+          Effectif
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-view="agenda" type="button">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          Agenda
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-view="compositions" type="button">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg>
+          Compositions
+        </button>
+      </li>
+    </ul>
+
+    <div class="sidebar__foot">
+      <p>Données enregistrées uniquement sur cet appareil.</p>
+    </div>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+
+  <main class="content">
+
+    <!-- ===================== VUE : ACCUEIL ===================== -->
+    <section class="view active" id="view-accueil">
+      <div class="home">
+        <img src="logo.png" alt="Écusson du FC 4R 70" class="home__crest">
+        <h1 class="home__title">FC 4R 70</h1>
+        <p class="home__sub">Compositions d'équipe</p>
+
+        <div class="home__menu">
+          <button class="home-tile" data-view="terrain" type="button">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18M12 4v16M8 8h1M8 16h1M15 8h1M15 16h1"/></svg>
+            <div>
+              <strong>Terrain</strong>
+              <span>Composer le onze de départ</span>
+            </div>
+          </button>
+
+          <button class="home-tile" data-view="effectif" type="button">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M14.8 20c0-2.6 1.6-4.6 4-5.2"/></svg>
+            <div>
+              <strong>Effectif</strong>
+              <span>Gérer les joueurs du club</span>
+            </div>
+          </button>
+
+          <button class="home-tile" data-view="agenda" type="button">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+            <div>
+              <strong>Agenda</strong>
+              <span>Voir les prochains matchs</span>
+            </div>
+          </button>
+
+          <button class="home-tile" data-view="compositions" type="button">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg>
+            <div>
+              <strong>Compositions</strong>
+              <span>Retrouver les compos enregistrées</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== VUE : TERRAIN ===================== -->
+    <section class="view" id="view-terrain">
+      <header class="view-header">
+        <div>
+          <input id="lineupTitle" class="lineup-title" type="text" value="Titulaires" maxlength="40">
+          <p class="view-header__sub">Compose ton onze pour le prochain match</p>
+        </div>
+        <div class="view-header__actions">
+          <label class="field">
+            <span>Formation</span>
+            <select id="formationSelect"></select>
+          </label>
+          <button id="clearPitchBtn" class="btn btn--ghost" type="button">Vider</button>
+          <button id="saveOpenBtn" class="btn btn--outline-dark" type="button">Enregistrer</button>
+          <button id="exportBtn" class="btn btn--solid" type="button">Exporter en image</button>
+        </div>
+      </header>
+
+      <div class="terrain-grid">
+        <div class="pitch-wrap">
+          <div id="pitch" class="pitch">
+            <div class="pitch__markings" aria-hidden="true">
+              <div class="pitch__circle"></div>
+              <div class="pitch__spot pitch__spot--center"></div>
+              <div class="pitch__line pitch__line--half"></div>
+              <div class="pitch__box pitch__box--top"></div>
+              <div class="pitch__box pitch__box--bottom"></div>
+              <div class="pitch__box pitch__box--top-small"></div>
+              <div class="pitch__box pitch__box--bottom-small"></div>
+              <div class="pitch__spot pitch__spot--top"></div>
+              <div class="pitch__spot pitch__spot--bottom"></div>
+              <div class="pitch__arc pitch__arc--top"></div>
+              <div class="pitch__arc pitch__arc--bottom"></div>
+              <div class="pitch__corner pitch__corner--tl"></div>
+              <div class="pitch__corner pitch__corner--tr"></div>
+              <div class="pitch__corner pitch__corner--bl"></div>
+              <div class="pitch__corner pitch__corner--br"></div>
+            </div>
+            <div id="pitchSlots" class="pitch__slots"></div>
+            <div class="pitch__brand">
+              <img src="logo.png" alt="">
+              <span id="pitchBrandTitle">Titulaires</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="bench-panel">
+          <div class="bench-panel__head">
+            <h2>Banc</h2>
+            <span id="benchCount" class="count-pill count-pill--ghost">0</span>
+          </div>
+          <p class="hint">Glisse un joueur sur le terrain ou clique dessus puis sur une position.</p>
+          <div id="benchList" class="bench-list"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===================== VUE : EFFECTIF ===================== -->
+    <section class="view" id="view-effectif">
+      <header class="view-header">
+        <div>
+          <h1 class="view-title">Effectif</h1>
+          <p class="view-header__sub"><span id="squadTotal">0</span> joueur(s) enregistré(s)</p>
+        </div>
+        <div class="view-header__actions">
+          <button id="addPlayerBtn" class="btn btn--solid" type="button">+ Ajouter un joueur</button>
+        </div>
+      </header>
+
+      <div id="squadGroups" class="squad-groups"></div>
+    </section>
+
+    <!-- ===================== VUE : AGENDA ===================== -->
+    <section class="view" id="view-agenda">
+      <header class="view-header">
+        <div>
+          <h1 class="view-title">Agenda</h1>
+          <p class="view-header__sub">Les matchs de la saison</p>
+        </div>
+        <div class="view-header__actions">
+          <button id="addMatchBtn" class="btn btn--solid" type="button">+ Ajouter un match</button>
+        </div>
+      </header>
+
+      <div class="calendar">
+        <div class="calendar__header">
+          <button id="calPrevBtn" class="calendar__nav-btn" type="button" aria-label="Mois précédent">‹</button>
+          <span id="calMonthLabel" class="calendar__month">Mois</span>
+          <button id="calNextBtn" class="calendar__nav-btn" type="button" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="calendar__weekdays">
+          <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+        </div>
+        <div id="calGrid" class="calendar__grid"></div>
+      </div>
+
+      <div class="agenda-list">
+        <h2 class="squad-group__title">Prochains matchs</h2>
+        <div id="agendaList"></div>
+      </div>
+    </section>
+
+    <!-- ===================== VUE : COMPOSITIONS ===================== -->
+    <section class="view" id="view-compositions">
+      <header class="view-header">
+        <div>
+          <h1 class="view-title">Compositions enregistrées</h1>
+          <p class="view-header__sub">Retrouve, recharge ou exporte tes compositions passées</p>
+        </div>
+      </header>
+
+      <div id="savedGrid" class="saved-grid"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODALE : AJOUT / EDITION JOUEUR ===================== -->
+<div class="modal-backdrop" id="playerModalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
+    <div class="modal__head">
+      <h2 id="playerModalTitle">Ajouter un joueur</h2>
+      <button class="modal__close" id="playerModalClose" type="button" aria-label="Fermer">×</button>
+    </div>
+    <form id="playerForm" class="modal__form">
+      <input type="hidden" id="playerId">
+      <label class="modal-field">
+        <span>Numéro</span>
+        <input id="playerNumber" type="number" min="1" max="99" required>
+      </label>
+      <label class="modal-field">
+        <span>Nom</span>
+        <input id="playerName" type="text" maxlength="24" required>
+      </label>
+      <label class="modal-field">
+        <span>Poste</span>
+        <select id="playerPosition">
+          <option value="GK">Gardien</option>
+          <option value="DEF">Défenseur</option>
+          <option value="MID">Milieu</option>
+          <option value="FWD">Attaquant</option>
+        </select>
+      </label>
+      <label class="modal-checkbox">
+        <input type="checkbox" id="playerCaptain">
+        <span>Brassard de capitaine</span>
+      </label>
+      <div class="modal__actions">
+        <button type="button" id="playerDeleteBtn" class="btn btn--ghost btn--danger" hidden>Supprimer</button>
+        <button type="submit" class="btn btn--solid">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODALE : SAUVEGARDE COMPOSITION ===================== -->
+<div class="modal-backdrop" id="saveModalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
+    <div class="modal__head">
+      <h2 id="saveModalTitle">Enregistrer la composition</h2>
+      <button class="modal__close" id="saveModalClose" type="button" aria-label="Fermer">×</button>
+    </div>
+    <form id="saveForm" class="modal__form">
+      <label class="modal-field">
+        <span>Nom de la composition</span>
+        <input id="saveName" type="text" maxlength="30" placeholder="Ex. Journée 12 vs Gray" required>
+      </label>
+      <div class="modal__actions">
+        <button type="submit" class="btn btn--solid">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODALE : AJOUT / EDITION MATCH ===================== -->
+<div class="modal-backdrop" id="matchModalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="matchModalTitle">
+    <div class="modal__head">
+      <h2 id="matchModalTitle">Ajouter un match</h2>
+      <button class="modal__close" id="matchModalClose" type="button" aria-label="Fermer">×</button>
+    </div>
+    <form id="matchForm" class="modal__form">
+      <input type="hidden" id="matchId">
+      <label class="modal-field">
+        <span>Date</span>
+        <input id="matchDate" type="date" required>
+      </label>
+      <label class="modal-field">
+        <span>Heure (optionnel)</span>
+        <input id="matchTime" type="time">
+      </label>
+      <label class="modal-field">
+        <span>Adversaire</span>
+        <input id="matchOpponent" type="text" maxlength="30" placeholder="Ex. AS Gray" required>
+      </label>
+      <label class="modal-field">
+        <span>Lieu</span>
+        <select id="matchVenue">
+          <option value="home">Domicile</option>
+          <option value="away">Extérieur</option>
+        </select>
+      </label>
+      <div class="modal__actions">
+        <button type="button" id="matchDeleteBtn" class="btn btn--ghost btn--danger" hidden>Supprimer</button>
+        <button type="submit" class="btn btn--solid">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
